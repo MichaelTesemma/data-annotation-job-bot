@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Annotation Job Bot</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Data Annotation Job Bot</h1>
+    <button id="refresh-btn">Refresh now</button>
+  </header>
+
+  <main>
+    <section class="panel" id="status-panel">
+      <h2>Source status</h2>
+      <table id="status-table">
+        <thead>
+          <tr><th>Source</th><th>Status</th><th>Found</th><th>Last run</th><th>Error</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="panel" id="filters">
+      <input type="search" id="search" placeholder="Search title, company, description, pay...">
+      <select id="filter-source">
+        <option value="">All sources</option>
+      </select>
+      <label><input type="checkbox" id="filter-remote"> Remote only</label>
+      <label>Min access <input type="number" id="filter-min-access" min="0" max="1" step="0.05" value="0"></label>
+      <select id="filter-applied">
+        <option value="">Any applied state</option>
+        <option value="true">Applied</option>
+        <option value="false">Not applied</option>
+      </select>
+      <select id="sort">
+        <option value="overall_score">Sort: Overall score</option>
+        <option value="access_score">Sort: Access score</option>
+        <option value="discovered_at">Sort: Discovered</option>
+        <option value="posted_at">Sort: Posted</option>
+        <option value="title">Sort: Title</option>
+        <option value="company">Sort: Company</option>
+        <option value="source">Sort: Source</option>
+      </select>
+    </section>
+
+    <section class="panel">
+      <h2>Jobs <span id="job-count"></span></h2>
+      <div class="table-wrap">
+        <table id="jobs-table">
+          <thead>
+            <tr>
+              <th>Title</th><th>Company</th><th>Source</th><th>Remote</th>
+              <th>Pay</th><th>Access</th><th>Overall</th><th>Applied</th><th>Notes</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" id="platforms-panel">
+      <h2>Dedicated platforms</h2>
+      <table id="platforms-table">
+        <thead>
+          <tr><th>Name</th><th>Ethiopia</th><th>Status</th><th>Notes</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

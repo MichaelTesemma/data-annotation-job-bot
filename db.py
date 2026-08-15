@@ -123,6 +123,12 @@ def _job_row(job: dict) -> dict:
     }
 
 
+def _row_to_job(row: dict) -> dict:
+    row["remote"] = bool(row["remote"])
+    row["applied"] = bool(row["applied"])
+    return row
+
+
 def get_jobs(filters: dict | None = None, sort: str | None = None, search: str | None = None) -> list[dict]:
     filters = filters or {}
     clauses: list[str] = []
@@ -166,7 +172,7 @@ def get_jobs(filters: dict | None = None, sort: str | None = None, search: str |
         rows = conn.execute(
             f"SELECT * FROM jobs {where} ORDER BY {order}", params
         ).fetchall()
-    return [dict(r) for r in rows]
+    return [_row_to_job(dict(r)) for r in rows]
 
 
 def update_job(job_id: int, fields: dict) -> dict | None:
@@ -180,13 +186,18 @@ def update_job(job_id: int, fields: dict) -> dict | None:
     with get_conn() as conn:
         conn.execute(f"UPDATE jobs SET {assignments} WHERE id = ?", values)
         row = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
-    return dict(row) if row else None
+    return _row_to_job(dict(row)) if row else None
 
 
 def list_platforms() -> list[dict]:
     with get_conn() as conn:
         rows = conn.execute("SELECT * FROM platforms ORDER BY name").fetchall()
-    return [dict(r) for r in rows]
+    return [_row_to_platform(dict(r)) for r in rows]
+
+
+def _row_to_platform(row: dict) -> dict:
+    row["ethiopia_accessible"] = bool(row["ethiopia_accessible"])
+    return row
 
 
 def update_platform(name: str, fields: dict) -> dict | None:
@@ -203,7 +214,7 @@ def update_platform(name: str, fields: dict) -> dict | None:
     with get_conn() as conn:
         conn.execute(f"UPDATE platforms SET {assignments} WHERE name = ?", values)
         row = conn.execute("SELECT * FROM platforms WHERE name = ?", (name,)).fetchone()
-    return dict(row) if row else None
+    return _row_to_platform(dict(row)) if row else None
 
 
 def record_source_run(source: str, status: str, count_found: int = 0, error: str | None = None) -> None:
