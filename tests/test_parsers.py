@@ -40,20 +40,50 @@ WWR_HTML = """
 
 REMOTECO_HTML = """
 <html><body>
-<div class="job-card">
-  <div class="card-body">
-    <a href="/job/data-annotator-1/">
-      <p class="m-0"><span class="font-weight-bold larger">Remote Data Annotator</span></p>
-      <p class="m-0 text-secondary">Clickworker | <span class="badge"><small>Full-time</small></span> | <span class="badge"><small>International</small></span></p>
-    </a>
+<div>
+  <div>
+    <div>
+      <a href="/job-details/data-annotator-1-abc123">
+        <span class="date">Today</span><h3>Remote Data Annotator</h3>
+      </a>
+    </div>
   </div>
+  <strong id="company-name-abc123">Clickworker</strong>
+  <ul>
+    <li>100% Remote Work</li>
+    <li>Full-Time</li>
+    <li>$15 - $20/hr</li>
+  </ul>
 </div>
-<div class="job-card">
-  <div class="card-body">
-    <a href="/job/ai-trainer-2/">
-      <p class="m-0"><span class="font-weight-bold larger">AI Trainer</span></p>
-      <p class="m-0 text-secondary">US Corp | <span class="badge"><small>Full-time</small></span> | <span class="badge"><small>US Only</small></span></p>
+<div>
+  <div>
+    <div>
+      <a href="/job-details/ai-trainer-2-def456">
+        <span class="date">2d</span><h3>AI Trainer</h3>
+      </a>
+    </div>
+  </div>
+  <strong id="company-name-def456">US Corp</strong>
+  <ul>
+    <li>100% Remote Work</li>
+    <li>Full-Time</li>
+  </ul>
+</div>
+</body></html>
+"""
+
+LINKEDIN_HTML = """
+<html><body>
+<div>
+  <div>
+    <a href="https://www.linkedin.com/jobs/view/data-annotator-at-toloka-12345?position=1&pageNum=0">
+      <h3 class="base-search-card__title">Data Annotator</h3>
     </a>
+    <h4 class="base-search-card__subtitle"><a href="https://www.linkedin.com/company/toloka">Toloka</a></h4>
+    <div class="base-search-card__metadata">
+      <span class="job-search-card__location">Worldwide</span>
+      <time class="job-search-card__listdate" datetime="2026-08-01">1 week ago</time>
+    </div>
   </div>
 </div>
 </body></html>
@@ -80,12 +110,27 @@ def test_wwr_parser_survives_empty_page():
 
 def test_remoteco_parses_jobs():
     scraper = RemoteCoScraper()
-    jobs = scraper._parse(REMOTECO_HTML, "data-entry")
+    jobs = scraper._parse(REMOTECO_HTML, "online-data-entry")
     assert len(jobs) == 2
     assert jobs[0]["title"] == "Remote Data Annotator"
     assert jobs[0]["company"] == "Clickworker"
-    assert "International" in jobs[0]["location"]
-    assert jobs[0]["url"] == "https://remote.co/job/data-annotator-1/"
+    assert jobs[0]["pay"] == "$15 - $20/hr"
+    assert "100% Remote Work" in jobs[0]["location"]
+    assert jobs[0]["url"] == "https://remote.co/job-details/data-annotator-1-abc123"
+
+
+def test_linkedin_parses_jobs():
+    from scrapers.jobboards import LinkedInScraper
+
+    scraper = LinkedInScraper()
+    jobs = scraper._parse(LINKEDIN_HTML, "data annotation")
+    assert len(jobs) == 1
+    job = jobs[0]
+    assert job["title"] == "Data Annotator"
+    assert job["company"] == "Toloka"
+    assert job["location"] == "Worldwide"
+    assert job["posted_at"] == "2026-08-01"
+    assert job["url"] == "https://www.linkedin.com/jobs/view/data-annotator-at-toloka-12345"
 
 
 def test_upsert_dedups_by_url(db_session):

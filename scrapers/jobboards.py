@@ -4,7 +4,7 @@ from urllib.parse import parse_qs, urlencode, urljoin, urlparse
 from bs4 import BeautifulSoup
 
 from config import SETTINGS
-from scrapers.base import BaseScraper, ScraperError, fetch, clean_text
+from scrapers.base import BaseScraper, ScraperError, fetch, fetch_camoufox, fetch_with_fallback, clean_text
 from scrapers.registry import register
 
 
@@ -18,10 +18,7 @@ class SearchBoardScraper(BaseScraper):
         for term in SETTINGS.search_terms:
             for start in range(0, SETTINGS.max_results_per_term, 10):
                 url = self._search_url(term, start)
-                try:
-                    html = fetch(url)
-                except ScraperError:
-                    html = fetch(url, use_playwright=True)
+                html = fetch_with_fallback(url)
                 page_jobs = self._parse(html, term)
                 jobs.extend(page_jobs)
                 if len(page_jobs) < 10:
@@ -71,25 +68,53 @@ class LinkedInScraper(SearchBoardScraper):
     name = "linkedin"
     search_url = "https://www.linkedin.com/jobs/search/?keywords={term}&start={start}"
 
+    def fetch_jobs(self) -> list[dict]:
+        jobs: list[dict] = []
+        for term in SETTINGS.search_terms:
+            for start in range(0, SETTINGS.max_results_per_term, 10):
+                url = self._search_url(term, start)
+                for attempt in range(2):
+                    html = fetch_camoufox(url)
+                    page_jobs = self._parse(html, term)
+                    if page_jobs or attempt == 1:
+                        break
+                jobs.extend(page_jobs)
+                if len(page_jobs) < 10:
+                    break
+        return jobs
+
     def _parse(self, html: str, term: str) -> list[dict]:
         soup = BeautifulSoup(html, "html.parser")
         results: list[dict] = []
-        for card in soup.select("li[data-occludable-job-id]"):
-            link = card.select_one("a.base-card__full-link, a[data-tracking-control-name]")
-            href = link.get("href", "") if link else ""
-            if not href:
+        seen: set[str] = set()
+        for anchor in soup.select('a[href*="/jobs/view/"]'):
+            href = anchor.get("href", "")
+            url = href.split("?")[0]
+            if not url or url in seen:
                 continue
-            title = clean_text(card.select_one("h3.base-search-card__title").get_text(" ")) if card.select_one("h3.base-search-card__title") else ""
+            seen.add(url)
+            card = anchor
+            for _ in range(4):
+                parent = card.parent
+                if parent is None:
+                    break
+                card = parent
+                if card.select_one("h3.base-search-card__title"):
+                    break
+            title = clean_text(card.select_one("h3.base-search-card__title").get_text(" ")) if card.select_one("h3.base-search-card__title") else clean_text(anchor.get_text(" "))
             company = clean_text(card.select_one("h4.base-search-card__subtitle").get_text(" ")) if card.select_one("h4.base-search-card__subtitle") else ""
-            location = clean_text(card.select_one("span.job-search-card__location").get_text(" ")) if card.select_one("span.job-search-card__location") else ""
+            loc_el = card.select_one(".job-search-card__location")
+            location = clean_text(loc_el.get_text(" ")) if loc_el else ""
+            date_el = card.select_one("time.job-search-card__listdate")
+            posted = date_el.get("datetime", "") if date_el else ""
             results.append({
                 "title": title or term,
                 "company": company,
-                "url": href.split("?")[0],
+                "url": url,
                 "location": location,
                 "remote": "remote" in (title + " " + location).lower(),
                 "pay": "",
-                "posted_at": "",
+                "posted_at": posted,
                 "description": f"{title} at {company}. Location: {location}.",
             })
         return results

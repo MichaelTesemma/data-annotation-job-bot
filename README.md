@@ -8,7 +8,7 @@ A personal tool that crawls the internet for data annotation jobs, ranks opportu
 - **Ethiopia-first ranking**: every job is scored 0–1 for Ethiopia accessibility (`access_score`) and overall desirability (`overall_score`). Nothing is dropped — low-access listings just sort lower and can be filtered out.
 - **Local dashboard**: sort, filter by source/remote/score/applied, search, mark jobs as applied, edit notes, and hit "Refresh now" to re-crawl. All data lives in a local SQLite database.
 - **Resilient scraping**: each source runs independently; a blocked or failing source never stops the others. Per-source status is shown on the dashboard.
-- **Polite by default**: respects `robots.txt`, rate-limits requests, and only falls back to a real browser (Playwright) when a lightweight fetch is blocked.
+- **Polite by default**: respects `robots.txt`, rate-limits requests, and falls back to a real browser (Playwright, then Camoufox) only when a lightweight fetch is blocked.
 
 ## Setup
 
@@ -20,6 +20,10 @@ python3 -m venv .venv
 
 # install the Playwright browser (needed for the blocked job boards)
 .venv/bin/python -m playwright install chromium
+
+# install the Camoufox anti-detection browser (last-resort fallback for hard-blocked sources like Remote.co)
+npm install -g camofox-browser   # the camofox CLI
+camoufox-js fetch                # download the Camoufox engine
 ```
 
 ## Usage
@@ -75,8 +79,9 @@ robots_enabled = False  # not recommended
 
 ## Troubleshooting
 
-- **Sources returning 0 / failing**: Indeed, LinkedIn, Wellfound, and Remote.co actively block scrapers. The dashboard's "Source status" panel shows which sources work and why the others fail. WeWorkRemotely is the most reliable.
+- **Sources returning 0 / failing**: Indeed and Wellfound hit interactive Cloudflare CAPTCHAs that even a stealth browser can't pass; they stay at 0. LinkedIn works via Camoufox but occasionally shows an auth wall (the scraper retries once automatically). Remote.co and WeWorkRemotely are the most reliable. The dashboard's "Source status" panel shows which sources work and why the others fail.
 - **Playwright not found**: run `.venv/bin/python -m playwright install chromium`.
+- **Camofox CLI not found**: install it with `npm install -g camofox-browser` and make sure `~/.npm-global/bin` (or wherever npm installs global bins) is on your `PATH`.
 - **Reset everything**: delete `data/jobs.db` (the `data/` directory is local state, safe to remove; it's recreated on next run).
 
 ## Running tests

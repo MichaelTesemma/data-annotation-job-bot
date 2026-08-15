@@ -26,6 +26,8 @@ class Settings:
     max_results_per_term: int = 50
     request_timeout_seconds: int = 20
     robots_enabled: bool = True
+    camoufox_wait_seconds: float = 6.0
+    camoufox_timeout_seconds: int = 120
 
 
 def _load_local_overrides() -> Settings:

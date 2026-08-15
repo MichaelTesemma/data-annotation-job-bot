@@ -1,5 +1,7 @@
+import json
 import logging
 import re
+import subprocess
 import time
 import urllib.robotparser
 from urllib.parse import urlparse
@@ -67,15 +69,78 @@ def _fetch_playwright(url: str) -> str:
     except ImportError as exc:
         raise ScraperError("playwright not installed; run `playwright install`") from exc
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            try:
+                page = browser.new_page(user_agent=SETTINGS.user_agent)
+                page.goto(url, timeout=SETTINGS.request_timeout_seconds * 1000, wait_until="domcontentloaded")
+                page.wait_for_timeout(3000)
+                return page.content()
+            finally:
+                browser.close()
+    except ScraperError:
+        raise
+    except Exception as exc:
+        raise ScraperError(f"playwright failed for {url}: {exc}") from exc
+
+
+def fetch_camoufox(url: str) -> str:
+    """Fetch a page through the camofox CLI (anti-detection Firefox)."""
+    try:
+        opened = _camoufox_cli(["open", url])
+        tab_id = opened.get("tabId")
+    except ScraperError:
+        raise
+    if not tab_id:
+        raise ScraperError(f"camofox open returned no tab for {url}")
+
+    try:
+        time.sleep(SETTINGS.camoufox_wait_seconds)
+        result = _camoufox_cli(["eval", "document.documentElement.outerHTML"])
+        html = result.get("result", "")
+        if not html:
+            raise ScraperError(f"camofox eval returned empty content for {url}")
+        return html
+    finally:
         try:
-            page = browser.new_page(user_agent=SETTINGS.user_agent)
-            page.goto(url, timeout=SETTINGS.request_timeout_seconds * 1000, wait_until="domcontentloaded")
-            page.wait_for_timeout(3000)
-            return page.content()
-        finally:
-            browser.close()
+            _camoufox_cli(["close", tab_id])
+        except ScraperError:
+            logger.warning("camofox close failed for tab %s", tab_id)
+
+
+def _camoufox_cli(args: list[str]) -> dict:
+    try:
+        proc = subprocess.run(
+            ["camofox", "--format", "json", *args],
+            capture_output=True,
+            text=True,
+            timeout=SETTINGS.camoufox_timeout_seconds,
+        )
+    except FileNotFoundError as exc:
+        raise ScraperError("camofox CLI not found on PATH") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise ScraperError(f"camofox timed out: {' '.join(args[:2])}") from exc
+    if proc.returncode != 0:
+        raise ScraperError(f"camofox failed ({proc.returncode}): {proc.stderr.strip() or proc.stdout.strip()}")
+    try:
+        return json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        raise ScraperError(f"camofox returned non-JSON output: {proc.stdout[:200]}") from exc
+
+
+def fetch_with_fallback(url: str) -> str:
+    """Try lightweight requests, then Playwright, then Camoufox."""
+    errors: list[str] = []
+    try:
+        return fetch(url)
+    except ScraperError as exc:
+        errors.append(str(exc))
+    try:
+        return _fetch_playwright(url)
+    except ScraperError as exc:
+        errors.append(str(exc))
+    return fetch_camoufox(url)
 
 
 def clean_text(value: str | None) -> str:

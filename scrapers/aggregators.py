@@ -4,7 +4,7 @@ from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 
 from config import SETTINGS
-from scrapers.base import BaseScraper, ScraperError, fetch, clean_text
+from scrapers.base import BaseScraper, ScraperError, fetch, fetch_camoufox, clean_text
 from scrapers.registry import register
 
 
@@ -58,16 +58,13 @@ class WeWorkRemotelyScraper(BaseScraper):
 class RemoteCoScraper(BaseScraper):
     name = "remoteco"
     base_url = "https://remote.co"
-    category_url = "https://remote.co/remote-jobs/{category}/"
+    category_url = "https://remote.co/remote-jobs/{category}"
 
     def fetch_jobs(self) -> list[dict]:
         jobs: list[dict] = []
         seen_urls: set[str] = set()
-        for category in ("data-entry", "customer-service", "virtual-assistant"):
-            try:
-                html = fetch(self.category_url.format(category=category))
-            except ScraperError:
-                html = fetch(self.category_url.format(category=category), use_playwright=True)
+        for category in ("online-data-entry", "customer-service", "virtual-assistant"):
+            html = fetch_camoufox(self.category_url.format(category=category))
             for job in self._parse(html, category):
                 if job["url"] not in seen_urls:
                     seen_urls.add(job["url"])
@@ -77,29 +74,37 @@ class RemoteCoScraper(BaseScraper):
     def _parse(self, html: str, category: str) -> list[dict]:
         soup = BeautifulSoup(html, "html.parser")
         results: list[dict] = []
-        for card in soup.select("div.job-card"):
-            link = card.select_one("a")
-            if link is None:
-                continue
+        for link in soup.select('a[href*="/job-details/"]'):
             href = link.get("href", "")
             if not href:
                 continue
             url = urljoin(self.base_url, href)
-            title_el = card.select_one(".font-weight-bold.larger")
-            title = clean_text(title_el.get_text(" ")) if title_el else ""
-            meta = clean_text(card.select_one(".text-secondary").get_text(" ")) if card.select_one(".text-secondary") else ""
-            company = meta.split("|")[0].strip() if meta else ""
-            tags = [t.strip() for t in meta.split("|")[1:]]
-            location = ", ".join(tags)
+            title = clean_text(link.select_one("h3").get_text(" ")) if link.select_one("h3") else ""
+            if not title:
+                continue
+            card = link
+            for _ in range(4):
+                parent = card.parent
+                if parent is None:
+                    break
+                card = parent
+                if card.select_one("strong[id^='company-name-']"):
+                    break
+            company = clean_text(card.select_one("strong[id^='company-name-']").get_text(" ")) if card.select_one("strong[id^='company-name-']") else ""
+            meta_items = [clean_text(li.get_text(" ")) for li in card.select("ul li")]
+            pay = next((m for m in meta_items if "$" in m), "")
+            work = ", ".join(m for m in meta_items if m not in (pay,))
+            date_el = link.select_one("span")
+            posted = clean_text(date_el.get_text(" ")) if date_el else ""
             results.append({
                 "title": title,
                 "company": company,
                 "url": url,
-                "location": location,
+                "location": work,
                 "remote": True,
-                "pay": "",
-                "posted_at": "",
-                "description": f"{title} at {company}. Source: remote.co {category}.",
+                "pay": pay,
+                "posted_at": posted,
+                "description": f"{title} at {company}. {work}. Source: remote.co {category}.",
             })
         return results
 
