@@ -63,7 +63,7 @@ class RemoteCoScraper(BaseScraper):
     def fetch_jobs(self) -> list[dict]:
         jobs: list[dict] = []
         seen_urls: set[str] = set()
-        for category in ("online-data-entry", "customer-service", "virtual-assistant"):
+        for category in ("online-data-entry", "virtual-assistant"):
             html = fetch_camoufox(self.category_url.format(category=category))
             for job in self._parse(html, category):
                 if job["url"] not in seen_urls:
@@ -178,11 +178,15 @@ class NodeSkScraper(BaseScraper):
         soup = BeautifulSoup(html, "html.parser")
         results: list[dict] = []
         for li in soup.select("li"):
-            link = li.select_one("h2 a[href*='/remote-jobs/'], h2 a")
+            link = li.select_one("h2 a[href*='/remote-jobs/']")
             if link is None:
                 continue
+            # Real job rows carry both an h2 title link and an h3 company;
+            # category/nav rows (e.g. /remote-jobs/ai/) do not.
+            if li.select_one("h3") is None:
+                continue
             href = link.get("href", "")
-            if "/remote-jobs/" not in href or href.rstrip("/").endswith("/remote-jobs"):
+            if "/remote-jobs/" not in href:
                 continue
             url = urljoin(self.base_url, href)
             title = clean_text(link.get_text(" "))

@@ -6,8 +6,8 @@ from config import SETTINGS
 from scrapers.base import BaseScraper, ScraperError, fetch, clean_text
 from scrapers.registry import register
 
-REMOTE_TERMS = ["data annotation", "data labeling", "AI training", "AI tutor", "RLHF", "data entry", "virtual assistant", "amharic", "translat"]
-WORKINGNOMADS_TERMS = ["data annotat", "data label", "ai training", "ai tutor", "rlhf", "data entr", "virtual assistant", "data analyst", "ai content", "online data", "amharic", "translat"]
+REMOTE_TERMS = ["annotat", "data label", "ai training", "ai tutor", "rlhf", "data entr", "amharic", "translat", "prompt"]
+WORKINGNOMADS_TERMS = ["data annotat", "data label", "ai training", "ai tutor", "rlhf", "data entr", "data analyst", "ai content", "amharic", "translat"]
 
 
 class RemoteOkScraper(BaseScraper):

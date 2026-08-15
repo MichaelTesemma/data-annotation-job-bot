@@ -12,6 +12,7 @@ from bs4 import BeautifulSoup
 import db
 import rank
 from config import SETTINGS
+from relevance import is_relevant
 
 logger = logging.getLogger("scrapers")
 
@@ -185,6 +186,9 @@ class BaseScraper:
             jobs = self.fetch_jobs()
             count = 0
             for raw_job in jobs:
+                if not is_relevant(raw_job.get("title", ""), raw_job.get("description", "")):
+                    logger.info("%s: dropping off-topic job: %s", self.name, raw_job.get("title", "")[:60])
+                    continue
                 job = normalize_job(**{**raw_job, "source": self.name})
                 job = rank.score_job(job)
                 db.upsert_job(job)

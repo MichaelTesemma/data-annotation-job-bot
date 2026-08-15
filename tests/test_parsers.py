@@ -301,6 +301,34 @@ def test_nodesk_parses_jobs():
     assert first["url"] == "https://nodesk.co/remote-jobs/apollo-senior-product-designer-2/"
 
 
+NODESK_NAV_HTML = """
+<html><body>
+<ul>
+  <li class="dt-s">
+    <h2><a href="/remote-jobs/ai/">AI Jobs</a></h2>
+  </li>
+  <li class="dt-s">
+    <h2><a href="/remote-jobs/data/">Data Jobs</a></h2>
+  </li>
+  <li class="dt-s">
+    <h2><a href="/remote-jobs/telus-data-annotator-77/">Data Annotator</a></h2>
+    <h3>TELUS</h3>
+  </li>
+</ul>
+</body></html>
+"""
+
+
+def test_nodesk_skips_category_nav_links():
+    from scrapers.aggregators import NodeSkScraper
+
+    scraper = NodeSkScraper()
+    jobs = scraper._parse(NODESK_NAV_HTML, "ai")
+    assert len(jobs) == 1
+    assert jobs[0]["title"] == "Data Annotator"
+    assert jobs[0]["url"] == "https://nodesk.co/remote-jobs/telus-data-annotator-77/"
+
+
 def test_freelancer_parses_jobs():
     from scrapers.freelance import FreelancerScraper
 
