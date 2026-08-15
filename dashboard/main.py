@@ -7,8 +7,9 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import db
-from scrapers import aggregators, jobboards  # noqa: F401  (registers sources)
+from scrapers import aggregators, apis, freelance, jobboards  # noqa: F401  (registers sources)
 from scrapers.registry import run_all
+from scrapers.state import state
 
 app = FastAPI(title="Data Annotation Job Bot")
 
@@ -77,6 +78,11 @@ def update_platform(name: str, update: PlatformUpdate) -> dict:
 @app.get("/api/source-status")
 def source_status() -> list[dict]:
     return db.get_source_status()
+
+
+@app.get("/api/scrape/status")
+def scrape_status() -> dict:
+    return state.snapshot()
 
 
 @app.post("/api/refresh")

@@ -3,7 +3,7 @@ import logging
 import sys
 
 import db
-from scrapers import aggregators, jobboards  # noqa: F401  (registers sources)
+from scrapers import aggregators, apis, freelance, jobboards  # noqa: F401  (registers sources)
 from scrapers.registry import run_all, SOURCE_REGISTRY
 from data.seed_platforms import seed_platforms
 

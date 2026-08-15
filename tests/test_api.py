@@ -77,6 +77,16 @@ def test_refresh_starts_background_job():
         assert res.json() == {"started": True}
 
 
+def test_scrape_status_endpoint_shape():
+    with TestClient(app) as client:
+        res = client.get("/api/scrape/status")
+        assert res.status_code == 200
+        body = res.json()
+        for key in ("running", "started_at", "finished_at", "total_sources", "completed", "sources"):
+            assert key in body
+        assert isinstance(body["sources"], list)
+
+
 def test_index_serves_dashboard():
     with TestClient(app) as client:
         res = client.get("/")

@@ -4,7 +4,7 @@ A personal tool that crawls the internet for data annotation jobs, ranks opportu
 
 ## Features
 
-- **Crawls three source types**: dedicated AI/data platforms (tracked as reference entries), general job boards (Indeed, LinkedIn, Wellfound), and remote job aggregators (WeWorkRemotely, Remote.co).
+- **Crawls three source types**: dedicated AI/data platforms (tracked as reference entries), general job boards (Indeed, LinkedIn, Wellfound), and remote job aggregators (WeWorkRemotely, Remote.co, RemoteOK, Remotive, Working Nomads, RemoteAfrica, NodeSk, Freelancer).
 - **Ethiopia-first ranking**: every job is scored 0–1 for Ethiopia accessibility (`access_score`) and overall desirability (`overall_score`). Nothing is dropped — low-access listings just sort lower and can be filtered out.
 - **Local dashboard**: sort, filter by source/remote/score/applied, search, mark jobs as applied, edit notes, and hit "Refresh now" to re-crawl. All data lives in a local SQLite database.
 - **Resilient scraping**: each source runs independently; a blocked or failing source never stops the others. Per-source status is shown on the dashboard.
@@ -51,11 +51,14 @@ camoufox-js fetch                # download the Camoufox engine
 ```
 scrapers/          one module per source
   base.py          shared fetch/robots/rate-limit helpers + BaseScraper
-  aggregators.py   WeWorkRemotely, Remote.co
+  apis.py          RemoteOK, Remotive, Working Nomads (JSON APIs)
+  aggregators.py   WeWorkRemotely, Remote.co, RemoteAfrica, NodeSk
+  freelance.py     Freelancer projects
   jobboards.py     Indeed, LinkedIn, Wellfound (best-effort)
   registry.py      source discovery + run_all()
+  state.py         live per-source scrape progress tracking
 dashboard/         FastAPI app
-  main.py          API routes + refresh endpoint
+  main.py          API routes + refresh endpoint + scrape status
   static/          HTML/CSS/JS dashboard
 db.py              SQLite schema + read/write helpers
 rank.py            Ethiopia-accessibility and desirability scoring
@@ -79,7 +82,7 @@ robots_enabled = False  # not recommended
 
 ## Troubleshooting
 
-- **Sources returning 0 / failing**: Indeed and Wellfound hit interactive Cloudflare CAPTCHAs that even a stealth browser can't pass; they stay at 0. LinkedIn works via Camoufox but occasionally shows an auth wall (the scraper retries once automatically). Remote.co and WeWorkRemotely are the most reliable. The dashboard's "Source status" panel shows which sources work and why the others fail.
+- **Sources returning 0 / failing**: Indeed and Wellfound hit interactive Cloudflare CAPTCHAs that even a stealth browser can't pass; they stay at 0. LinkedIn works via Camoufox but occasionally shows an auth wall (the scraper retries once automatically). Remote.co, WeWorkRemotely, RemoteOK, Remotive, Working Nomads, RemoteAfrica, NodeSk, and Freelancer are the most reliable. The dashboard's "Source status" panel shows which sources work and why the others fail, and the "Scrape" button shows live per-source progress while a run is in flight.
 - **Playwright not found**: run `.venv/bin/python -m playwright install chromium`.
 - **Camofox CLI not found**: install it with `npm install -g camofox-browser` and make sure `~/.npm-global/bin` (or wherever npm installs global bins) is on your `PATH`.
 - **Reset everything**: delete `data/jobs.db` (the `data/` directory is local state, safe to remove; it's recreated on next run).

@@ -1,4 +1,5 @@
 const state = { jobs: [], platforms: [], sourceStatus: [] };
+let scrapeTimer = null;
 
 const $ = (sel) => document.querySelector(sel);
 const esc = (s) => {
@@ -102,11 +103,45 @@ async function loadPlatforms() {
 async function refresh() {
   const btn = $("#refresh-btn");
   btn.disabled = true;
-  btn.textContent = "Refreshing...";
+  btn.textContent = "Scraping...";
   await api("/api/refresh", { method: "POST" });
-  await loadStatus();
-  btn.disabled = false;
-  btn.textContent = "Refresh now";
+  $("#scrape-progress").classList.remove("hidden");
+  pollScrapeStatus();
+}
+
+const STATUS_LABEL = { pending: "waiting", running: "running", success: "done", error: "failed" };
+
+function renderScrapeProgress(snap) {
+  const container = $("#scrape-progress");
+  container.classList.remove("hidden");
+  const pct = snap.total_sources ? Math.round((snap.completed / snap.total_sources) * 100) : 0;
+  const rows = snap.sources.map((s) => `
+    <div class="sp-row">
+      <span class="sp-source">${esc(s.source)}</span>
+      <span class="sp-status sp-${s.status}">${STATUS_LABEL[s.status] || s.status}</span>
+      ${s.error ? `<span class="sp-error sp-error-detail">${esc(s.error.slice(0, 80))}</span>` : ""}
+    </div>
+  `).join("");
+  container.innerHTML = `
+    <div class="sp-bar"><div class="sp-fill" style="width:${pct}%"></div></div>
+    <div class="sp-rows">${rows}</div>
+  `;
+}
+
+async function pollScrapeStatus() {
+  const snap = await api("/api/scrape/status");
+  renderScrapeProgress(snap);
+  if (snap.running) {
+    scrapeTimer = setTimeout(pollScrapeStatus, 1000);
+  } else {
+    clearTimeout(scrapeTimer);
+    scrapeTimer = null;
+    const btn = $("#refresh-btn");
+    btn.disabled = false;
+    btn.textContent = "Scrape";
+    await Promise.all([loadStatus(), loadJobs(), loadPlatforms()]);
+    setTimeout(() => $("#scrape-progress").classList.add("hidden"), 4000);
+  }
 }
 
 async function pollStatus() {
@@ -119,8 +154,8 @@ async function pollStatus() {
 }
 
 $("#refresh-btn").addEventListener("click", async () => {
+  if ($("#refresh-btn").disabled) return;
   await refresh();
-  await pollStatus();
 });
 
 ["#search", "#filter-source", "#filter-remote", "#filter-min-access", "#filter-applied", "#sort"]

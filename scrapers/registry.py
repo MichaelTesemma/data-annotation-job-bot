@@ -2,6 +2,7 @@ import logging
 from collections.abc import Callable
 
 from scrapers.base import BaseScraper
+from scrapers.state import state
 
 logger = logging.getLogger("scrapers")
 
@@ -25,7 +26,14 @@ def run_source(name: str) -> dict:
 
 def run_all(sources: list[str] | None = None) -> list[dict]:
     names = sources or list(SOURCE_REGISTRY.keys())
+    state.begin(names)
     results = []
-    for name in names:
-        results.append(run_source(name))
+    try:
+        for name in names:
+            state.start_source(name)
+            result = run_source(name)
+            results.append(result)
+            state.finish_source(name, result)
+    finally:
+        state.end()
     return results

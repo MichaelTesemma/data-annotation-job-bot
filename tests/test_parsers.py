@@ -153,3 +153,200 @@ def test_upsert_dedups_by_url(db_session):
 def test_soup_parse_smoke():
     soup = BeautifulSoup(WWR_HTML, "html.parser")
     assert len(soup.select("li.new-listing-container:not(.listing-ad)")) == 2
+
+
+REMOTEAFRICA_HTML = """
+<html><body>
+<div>
+  <div>
+    <p>GLOBO Language Solutions</p>
+    <a href="/jobs/globo-twi-english-interpreter">Twi English Interpreter</a>
+    <div>
+      <span>100% Remote</span>
+      <span>contract</span>
+      <span>Anywhere in the World</span>
+    </div>
+  </div>
+</div>
+<div>
+  <div>
+    <p>Some Remote Co</p>
+    <a href="/jobs/some-remote-co-data-annotator">Data Annotator</a>
+    <div>
+      <span>100% Remote</span>
+      <span>Full-time</span>
+      <span>Africa</span>
+    </div>
+  </div>
+</div>
+</body></html>
+"""
+
+NODESK_HTML = """
+<html><body>
+<ul>
+  <li class="dt-s">
+    <h2><a href="/remote-jobs/apollo-senior-product-designer-2/">Senior Product Designer</a></h2>
+    <h3>Apollo</h3>
+    <div>Remote: United States Design Full-Time $173.4K - $249.3K</div>
+  </li>
+  <li class="dt-s">
+    <h2><a href="/remote-jobs/scale-ai-data-annotator-5/">Data Annotator</a></h2>
+    <h3>Scale AI</h3>
+    <div>Remote: Worldwide AI Full-Time</div>
+  </li>
+</ul>
+</body></html>
+"""
+
+FREELANCER_HTML = """
+<html><body>
+<div class="ProjectSearch-content">
+  <div class="JobSearchCard-list">
+    <div class="JobSearchCard-item">
+      <div class="JobSearchCard-item-inner" data-project-card="true">
+        <div class="JobSearchCard-primary">
+          <div class="JobSearchCard-primary-heading">
+            <a class="JobSearchCard-primary-heading-link" href="/projects/data-collection/mobile-survey-form">Mobile Survey Form Bharai</a>
+            <div class="JobSearchCard-primary-heading-daystatus">
+              <span class="JobSearchCard-primary-heading-days">6 days left</span>
+            </div>
+          </div>
+          <p class="JobSearchCard-primary-description">Need help filling online survey forms.</p>
+          <div class="JobSearchCard-primary-price">$10 / hr Average bid</div>
+        </div>
+      </div>
+    </div>
+    <div class="JobSearchCard-item">
+      <div class="JobSearchCard-item-inner" data-project-card="true">
+        <div class="JobSearchCard-primary">
+          <div class="JobSearchCard-primary-heading">
+            <a class="JobSearchCard-primary-heading-link" href="/projects/data-entry/spreadsheet-entry">Spreadsheet Data Entry</a>
+            <div class="JobSearchCard-primary-heading-daystatus">
+              <span class="JobSearchCard-primary-heading-days">2 days left</span>
+            </div>
+          </div>
+          <p class="JobSearchCard-primary-description">Enter rows into Excel.</p>
+          <div class="JobSearchCard-primary-price">$5 / hr Average bid</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>
+"""
+
+REMOTEOK_JSON = [
+    {"position": "Anchorman", "company": "TV", "tags": ["media"], "url": "https://remoteok.com/a"},
+    {
+        "position": "Data Annotator", "company": "Annotation Co", "url": "https://remoteok.com/remote-jobs/data-annotator-1",
+        "date": "2026-08-14T00:00:00+00:00", "location": "Anywhere", "salary_min": 30000, "salary_max": 50000,
+        "tags": ["data annotation", "ai training", "full time"],
+    },
+]
+
+REMOTIVE_JSON = {
+    "jobs": [
+        {
+            "title": "AI Trainer", "company_name": "Scale AI", "url": "https://remotive.com/remote-jobs/ai-trainer-1",
+            "candidate_required_location": "Anywhere", "salary": "Pay per task", "publication_date": "2026-08-10",
+            "description": "<p>Train models on data.</p>", "category": "All others", "job_type": "part_time",
+        },
+        {
+            "title": "Data Entry Clerk", "company_name": "Aquent", "url": "https://remotive.com/remote-jobs/data-entry-2",
+            "candidate_required_location": "USA", "salary": "$18/hr", "publication_date": "2026-08-09",
+            "description": "Enter data into systems.",
+        },
+    ]
+}
+
+WORKINGNOMADS_JSON = [
+    {
+        "url": "https://www.workingnomads.com/job/go/1/", "title": "Senior Data Engineer",
+        "company_name": "Lemon.io", "location": "Worldwide", "pub_date": "2026-08-08",
+        "category_name": "Data Engineering",
+        "description": "<p>Build pipelines.</p>",
+    },
+    {
+        "url": "https://www.workingnomads.com/job/go/2/", "title": "AI Tutor for Data Annotation",
+        "company_name": "Edu Co", "location": "Anywhere", "pub_date": "2026-08-07",
+        "category_name": "Data Annotation",
+        "description": "<p>Tutor and annotate.</p>",
+    },
+]
+
+
+def test_remoteafrica_parses_jobs():
+    from scrapers.aggregators import RemoteAfricaScraper
+
+    scraper = RemoteAfricaScraper()
+    jobs = scraper._parse(REMOTEAFRICA_HTML, "remoteafrica")
+    assert len(jobs) == 2
+    first = jobs[0]
+    assert first["title"] == "Twi English Interpreter"
+    assert first["company"] == "GLOBO Language Solutions"
+    assert first["remote"] is True
+    assert first["url"] == "https://remote4africa.com/jobs/globo-twi-english-interpreter"
+
+
+def test_nodesk_parses_jobs():
+    from scrapers.aggregators import NodeSkScraper
+
+    scraper = NodeSkScraper()
+    jobs = scraper._parse(NODESK_HTML, "ai")
+    assert len(jobs) == 2
+    first = jobs[0]
+    assert first["title"] == "Senior Product Designer"
+    assert first["company"] == "Apollo"
+    assert first["url"] == "https://nodesk.co/remote-jobs/apollo-senior-product-designer-2/"
+
+
+def test_freelancer_parses_jobs():
+    from scrapers.freelance import FreelancerScraper
+
+    scraper = FreelancerScraper()
+    jobs = scraper._parse(FREELANCER_HTML, "data-entry")
+    assert len(jobs) == 2
+    first = jobs[0]
+    assert first["title"] == "Mobile Survey Form Bharai"
+    assert first["pay"] == "$10 / hr Average bid"
+    assert first["url"] == "https://www.freelancer.com/projects/data-collection/mobile-survey-form"
+
+
+def test_remoteok_parses_jobs():
+    import json
+    from scrapers.apis import RemoteOkScraper
+
+    scraper = RemoteOkScraper()
+    jobs = scraper._parse(json.dumps(REMOTEOK_JSON), "term")
+    assert len(jobs) == 1
+    job = jobs[0]
+    assert job["title"] == "Data Annotator"
+    assert job["company"] == "Annotation Co"
+    assert job["pay"] == "$30,000 - $50,000"
+
+
+def test_remotive_parses_jobs():
+    import json
+    from scrapers.apis import RemotiveScraper
+
+    scraper = RemotiveScraper()
+    jobs = scraper._parse(json.dumps(REMOTIVE_JSON), "term")
+    assert len(jobs) == 2
+    assert jobs[0]["title"] == "AI Trainer"
+    assert jobs[0]["company"] == "Scale AI"
+    assert jobs[0]["pay"] == "Pay per task"
+    assert jobs[1]["location"] == "USA"
+
+
+def test_workingnomads_parses_jobs():
+    import json
+    from scrapers.apis import WorkingNomadsScraper
+
+    scraper = WorkingNomadsScraper()
+    jobs = scraper._parse(json.dumps(WORKINGNOMADS_JSON), "term")
+    assert len(jobs) == 1
+    job = jobs[0]
+    assert job["title"] == "AI Tutor for Data Annotation"
+    assert job["company"] == "Edu Co"
+    assert job["url"] == "https://www.workingnomads.com/job/go/2/"
