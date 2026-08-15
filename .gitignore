@@ -1,0 +1,8 @@
+data/jobs.db
+data/jobs.db-*
+__pycache__/
+*.pyc
+.venv/
+config.local.py
+.pytest_cache/
+*.egg-info/
