@@ -4,10 +4,10 @@ from dashboard.main import app
 import db
 
 
-def _make_job(db_session, url="https://example.com/jobs/api-1"):
+def _make_job(db_session, url="https://example.com/jobs/api-1", title="API Test Job", description="global"):
     job = {
-        "title": "API Test Job", "company": "Toloka", "source": "stub_api",
-        "url": url, "description": "global", "location": "Worldwide", "remote": True,
+        "title": title, "company": "Toloka", "source": "stub_api",
+        "url": url, "description": description, "location": "Worldwide", "remote": True,
         "pay": "$20/hr", "access_score": 0.9, "overall_score": 0.9,
     }
     db_session.upsert_job(job)
@@ -85,6 +85,36 @@ def test_scrape_status_endpoint_shape():
         for key in ("running", "started_at", "finished_at", "total_sources", "completed", "sources"):
             assert key in body
         assert isinstance(body["sources"], list)
+
+
+def test_jobs_category_filter(db_session):
+    _make_job(db_session, url="https://example.com/jobs/annotation-1", title="AI Data Annotator", description="labeling training data")
+    _make_job(db_session, url="https://example.com/jobs/translation-2", title="Amharic English Translator", description="translate english to amharic")
+    with TestClient(app) as client:
+        res = client.get("/api/categories")
+        assert res.status_code == 200
+        assert "translation" in res.json()
+        assert "data annotation" in res.json()
+
+        annotation = client.get("/api/jobs", params={"category": "data annotation"}).json()
+        translation = client.get("/api/jobs", params={"category": "translation"}).json()
+        assert len(annotation) == 1
+        assert annotation[0]["title"] == "AI Data Annotator"
+        assert len(translation) == 1
+        assert translation[0]["title"] == "Amharic English Translator"
+
+
+def test_export_csv(db_session):
+    _make_job(db_session, url="https://example.com/jobs/csv-1")
+    with TestClient(app) as client:
+        res = client.get("/api/jobs/export")
+        assert res.status_code == 200
+        assert "text/csv" in res.headers["content-type"]
+        assert "filename=" in res.headers["content-disposition"]
+        body = res.text
+        assert body.startswith("\ufeff")  # UTF-8 BOM for Excel
+        assert "title,company,source,url" in body
+        assert "API Test Job" in body
 
 
 def test_index_serves_dashboard():

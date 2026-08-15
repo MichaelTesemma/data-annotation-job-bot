@@ -6,7 +6,7 @@ A personal tool that crawls the internet for data annotation jobs, ranks opportu
 
 - **Crawls three source types**: dedicated AI/data platforms (tracked as reference entries), general job boards (Indeed, LinkedIn, Wellfound), and remote job aggregators (WeWorkRemotely, Remote.co, RemoteOK, Remotive, Working Nomads, RemoteAfrica, NodeSk, Freelancer).
 - **Ethiopia-first ranking**: every job is scored 0–1 for Ethiopia accessibility (`access_score`) and overall desirability (`overall_score`). Nothing is dropped — low-access listings just sort lower and can be filtered out.
-- **Local dashboard**: sort, filter by source/remote/score/applied, search, mark jobs as applied, edit notes, and hit "Refresh now" to re-crawl. All data lives in a local SQLite database.
+- **Local dashboard**: sort, filter by source/category/remote/score/applied, search, mark jobs as applied, edit notes, hit "Scrape" to re-crawl with a live per-source progress bar, and hit "Export CSV" to download the currently filtered results as a spreadsheet.
 - **Resilient scraping**: each source runs independently; a blocked or failing source never stops the others. Per-source status is shown on the dashboard.
 - **Polite by default**: respects `robots.txt`, rate-limits requests, and falls back to a real browser (Playwright, then Camoufox) only when a lightweight fetch is blocked.
 
@@ -76,9 +76,14 @@ Copy the defaults in `config.py` into a gitignored `config.local.py` to override
 rate_limit_seconds = 1.0
 scheduler_interval_hours = 6
 search_terms = ["data annotation", "data labeling"]
+translation_search_terms = ["amharic translation", "amharic english"]
 max_results_per_term = 100
 robots_enabled = False  # not recommended
 ```
+
+## Categories
+
+Jobs are tagged by keyword into categories (`categories.py`) and filterable from the dashboard. The default categories are **data annotation** (annotation/labeling/AI-training terms) and **translation** (Amharic/English translation, interpreter, and አማርኛ terms). The translation search terms in `translation_search_terms` are added to every scraper's search automatically, so translation jobs are collected alongside annotation jobs.
 
 ## Troubleshooting
 

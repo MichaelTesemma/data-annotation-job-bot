@@ -74,6 +74,11 @@ button {
 }
 button:disabled { opacity: 0.6; cursor: progress; }
 
+button.export-btn {
+  background: #0f766e;
+  margin-left: auto;
+}
+
 main { padding: 20px 24px; max-width: 1200px; margin: 0 auto; }
 
 .panel {

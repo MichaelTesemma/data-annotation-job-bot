@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from config import SETTINGS
+from categories import category_keywords
 
 
 def _utcnow() -> str:
@@ -156,6 +157,19 @@ def get_jobs(filters: dict | None = None, sort: str | None = None, search: str |
         clauses.append("(title LIKE ? OR company LIKE ? OR description LIKE ? OR pay LIKE ?)")
         like = f"%{search}%"
         params.extend([like, like, like, like])
+
+    category = filters.get("category")
+    if category:
+        keywords = category_keywords(category)
+        if keywords:
+            kw_clauses = [
+                "(title LIKE ? OR company LIKE ? OR location LIKE ? OR description LIKE ?)"
+                for _ in keywords
+            ]
+            clauses.append(f"({' OR '.join(kw_clauses)})")
+            for kw in keywords:
+                like = f"%{kw}%"
+                params.extend([like, like, like, like])
 
     where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
     order = {

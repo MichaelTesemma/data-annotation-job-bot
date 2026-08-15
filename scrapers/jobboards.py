@@ -15,7 +15,7 @@ class SearchBoardScraper(BaseScraper):
 
     def fetch_jobs(self) -> list[dict]:
         jobs: list[dict] = []
-        for term in SETTINGS.search_terms:
+        for term in SETTINGS.all_search_terms:
             for start in range(0, SETTINGS.max_results_per_term, 10):
                 url = self._search_url(term, start)
                 html = fetch_with_fallback(url)
@@ -70,7 +70,7 @@ class LinkedInScraper(SearchBoardScraper):
 
     def fetch_jobs(self) -> list[dict]:
         jobs: list[dict] = []
-        for term in SETTINGS.search_terms:
+        for term in SETTINGS.all_search_terms:
             for start in range(0, SETTINGS.max_results_per_term, 10):
                 url = self._search_url(term, start)
                 for attempt in range(2):

@@ -1,12 +1,15 @@
+import csv
+import io
 import threading
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import db
+from categories import categories as list_categories
 from scrapers import aggregators, apis, freelance, jobboards  # noqa: F401  (registers sources)
 from scrapers.registry import run_all
 from scrapers.state import state
@@ -38,6 +41,7 @@ def index() -> FileResponse:
 def get_jobs(
     sort: str | None = None,
     source: str | None = None,
+    category: str | None = None,
     remote_only: bool = False,
     min_access: float | None = None,
     applied: bool | None = None,
@@ -45,11 +49,60 @@ def get_jobs(
 ) -> list[dict]:
     filters = {
         "source": source,
+        "category": category,
         "remote_only": remote_only,
         "min_access": min_access,
         "applied": applied,
     }
     return db.get_jobs(filters=filters, sort=sort, search=search)
+
+
+def _export_filename() -> str:
+    from datetime import datetime, timezone
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    return f"jobs-{stamp}.csv"
+
+
+@app.get("/api/jobs/export")
+def export_jobs(
+    source: str | None = None,
+    category: str | None = None,
+    remote_only: bool = False,
+    min_access: float | None = None,
+    applied: bool | None = None,
+    search: str | None = None,
+) -> StreamingResponse:
+    filters = {
+        "source": source,
+        "category": category,
+        "remote_only": remote_only,
+        "min_access": min_access,
+        "applied": applied,
+    }
+    jobs = db.get_jobs(filters=filters, sort="overall_score", search=search)
+    buffer = io.StringIO()
+    writer = csv.DictWriter(
+        buffer,
+        fieldnames=[
+            "title", "company", "source", "url", "location", "remote", "pay",
+            "posted_at", "access_score", "overall_score", "applied", "notes", "description",
+        ],
+    )
+    writer.writeheader()
+    for job in jobs:
+        writer.writerow({field: job.get(field, "") for field in writer.fieldnames})
+    data = "\ufeff" + buffer.getvalue()
+    return StreamingResponse(
+        iter([data]),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f"attachment; filename={_export_filename()}"},
+    )
+
+
+@app.get("/api/categories")
+def get_categories() -> list[str]:
+    return list_categories()
 
 
 @app.patch("/api/jobs/{job_id}")

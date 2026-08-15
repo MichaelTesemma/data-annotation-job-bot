@@ -6,8 +6,8 @@ from config import SETTINGS
 from scrapers.base import BaseScraper, ScraperError, fetch, clean_text
 from scrapers.registry import register
 
-REMOTE_TERMS = ["data annotation", "data labeling", "AI training", "AI tutor", "RLHF", "data entry", "virtual assistant"]
-WORKINGNOMADS_TERMS = ["data annotat", "data label", "ai training", "ai tutor", "rlhf", "data entr", "virtual assistant", "data analyst", "ai content", "online data"]
+REMOTE_TERMS = ["data annotation", "data labeling", "AI training", "AI tutor", "RLHF", "data entry", "virtual assistant", "amharic", "translat"]
+WORKINGNOMADS_TERMS = ["data annotat", "data label", "ai training", "ai tutor", "rlhf", "data entr", "virtual assistant", "data analyst", "ai content", "online data", "amharic", "translat"]
 
 
 class RemoteOkScraper(BaseScraper):
@@ -52,7 +52,7 @@ class RemotiveScraper(BaseScraper):
     def fetch_jobs(self) -> list[dict]:
         jobs: list[dict] = []
         seen: set[str] = set()
-        for term in SETTINGS.search_terms:
+        for term in SETTINGS.all_search_terms:
             html = fetch(self.api_url.format(term=self._quote(term)))
             for job in self._parse(html, term):
                 if job["url"] not in seen:

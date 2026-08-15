@@ -47,10 +47,12 @@ function renderJobs() {
 async function loadJobs() {
   const params = new URLSearchParams();
   const source = $("#filter-source").value;
+  const category = $("#filter-category").value;
   const search = $("#search").value.trim();
   const minAccess = $("#filter-min-access").value;
   const applied = $("#filter-applied").value;
   if (source) params.set("source", source);
+  if (category) params.set("category", category);
   if ($("#filter-remote").checked) params.set("remote_only", "true");
   if (minAccess && parseFloat(minAccess) > 0) params.set("min_access", minAccess);
   if (applied) params.set("applied", applied);
@@ -58,6 +60,48 @@ async function loadJobs() {
   params.set("sort", $("#sort").value);
   state.jobs = await api(`/api/jobs?${params}`);
   renderJobs();
+}
+
+function currentQueryString(extra = {}) {
+  const params = new URLSearchParams();
+  const source = $("#filter-source").value;
+  const category = $("#filter-category").value;
+  const search = $("#search").value.trim();
+  const minAccess = $("#filter-min-access").value;
+  const applied = $("#filter-applied").value;
+  if (source) params.set("source", source);
+  if (category) params.set("category", category);
+  if ($("#filter-remote").checked) params.set("remote_only", "true");
+  if (minAccess && parseFloat(minAccess) > 0) params.set("min_access", minAccess);
+  if (applied) params.set("applied", applied);
+  if (search) params.set("search", search);
+  Object.entries(extra).forEach(([k, v]) => params.set(k, v));
+  return params.toString();
+}
+
+async function exportCsv() {
+  const btn = $("#export-btn");
+  btn.disabled = true;
+  btn.textContent = "Exporting...";
+  try {
+    const url = `/api/jobs/export?${currentQueryString()}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`${url} -> ${res.status}`);
+    const blob = await res.blob();
+    const disposition = res.headers.get("Content-Disposition") || "";
+    const match = disposition.match(/filename=\"?([^\";]+)\"?/);
+    const filename = match ? match[1] : "jobs.csv";
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  } catch (err) {
+    console.error("export failed", err);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Export CSV";
+  }
 }
 
 function renderStatus() {
@@ -158,7 +202,9 @@ $("#refresh-btn").addEventListener("click", async () => {
   await refresh();
 });
 
-["#search", "#filter-source", "#filter-remote", "#filter-min-access", "#filter-applied", "#sort"]
+$("#export-btn").addEventListener("click", exportCsv);
+
+["#search", "#filter-source", "#filter-category", "#filter-remote", "#filter-min-access", "#filter-applied", "#sort"]
   .forEach((sel) => $(sel).addEventListener("input", loadJobs));
 $("#filter-remote").addEventListener("change", loadJobs);
 $("#filter-applied").addEventListener("change", loadJobs);
@@ -197,6 +243,14 @@ async function init() {
     opt.value = s;
     opt.textContent = s;
     sel.appendChild(opt);
+  });
+  const cats = await api("/api/categories");
+  const catSel = $("#filter-category");
+  cats.forEach((c) => {
+    const opt = document.createElement("option");
+    opt.value = c;
+    opt.textContent = c;
+    catSel.appendChild(opt);
   });
   await Promise.all([loadJobs(), loadPlatforms()]);
   setInterval(pollStatus, 10000);

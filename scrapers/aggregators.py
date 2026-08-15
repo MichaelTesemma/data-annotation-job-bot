@@ -15,7 +15,7 @@ class WeWorkRemotelyScraper(BaseScraper):
 
     def fetch_jobs(self) -> list[dict]:
         jobs: list[dict] = []
-        for term in SETTINGS.search_terms:
+        for term in SETTINGS.all_search_terms:
             html = fetch(self.search_url.format(term=self._quote(term)))
             jobs.extend(self._parse(html, term))
         return jobs

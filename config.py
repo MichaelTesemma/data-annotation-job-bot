@@ -12,11 +12,23 @@ DEFAULT_SEARCH_TERMS = [
     "data analyst annotation",
 ]
 
+TRANSLATION_SEARCH_TERMS = [
+    "amharic translation",
+    "amharic english",
+    "english amharic translator",
+    "amharic to english",
+]
+
 
 @dataclass
 class Settings:
     search_terms: list[str] = field(default_factory=lambda: list(DEFAULT_SEARCH_TERMS))
+    translation_search_terms: list[str] = field(default_factory=lambda: list(TRANSLATION_SEARCH_TERMS))
     rate_limit_seconds: float = 2.0
+
+    @property
+    def all_search_terms(self) -> list[str]:
+        return list(self.search_terms) + list(self.translation_search_terms)
     user_agent: str = (
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
