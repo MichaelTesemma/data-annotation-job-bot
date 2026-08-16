@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import db
-from categories import categories as list_categories
+from categories import category_sources, categories as list_categories
 from scrapers import aggregators, apis, freelance, jobboards  # noqa: F401  (registers sources)
 from scrapers.registry import run_all
 from scrapers.state import state
@@ -101,8 +101,11 @@ def export_jobs(
 
 
 @app.get("/api/categories")
-def get_categories() -> list[str]:
-    return list_categories()
+def get_categories() -> list[dict]:
+    return [
+        {"name": name, "sources": category_sources(name)}
+        for name in list_categories()
+    ]
 
 
 @app.patch("/api/jobs/{job_id}")

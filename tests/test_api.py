@@ -93,8 +93,9 @@ def test_jobs_category_filter(db_session):
     with TestClient(app) as client:
         res = client.get("/api/categories")
         assert res.status_code == 200
-        assert "translation" in res.json()
-        assert "data annotation" in res.json()
+        names = [c["name"] for c in res.json()]
+        assert "translation" in names
+        assert "data annotation" in names
 
         annotation = client.get("/api/jobs", params={"category": "data annotation"}).json()
         translation = client.get("/api/jobs", params={"category": "translation"}).json()

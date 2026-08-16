@@ -9,6 +9,18 @@ def test_annotation_jobs_kept():
     assert is_relevant("Online Data Analyst", "help train search relevance")
 
 
+def test_new_categories_kept():
+    assert is_relevant("Website Tester", "test website usability and report bugs")
+    assert is_relevant("UserTesting Panelist", "complete usability sessions")
+    assert is_relevant("MTurk Worker", "complete micro tasks on Amazon MTurk")
+    assert is_relevant("Clickworker Survey Taker", "take online surveys for pay")
+    assert is_relevant("Research Respondent", "join research panel and share feedback")
+    assert is_relevant("Content Moderator", "review flagged user content")
+    assert is_relevant("Web Research Assistant", "compile online research into spreadsheets")
+    assert is_relevant("Search Evaluator", "rate search results for relevance")
+    assert is_relevant("Micro task specialist", "complete small micro tasks")
+
+
 def test_translation_jobs_kept():
     assert is_relevant("Amharic English Translator", "translate documents to and from Amharic")
     assert is_relevant("Twi English Interpreter", "interpret calls between Twi and English")

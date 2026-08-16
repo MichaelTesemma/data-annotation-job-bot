@@ -1,4 +1,4 @@
-const state = { jobs: [], platforms: [], sourceStatus: [] };
+const state = { jobs: [], platforms: [], sourceStatus: [], categories: [] };
 let scrapeTimer = null;
 
 const $ = (sel) => document.querySelector(sel);
@@ -144,6 +144,26 @@ async function loadPlatforms() {
   renderPlatforms();
 }
 
+function renderCategorySources() {
+  const name = $("#filter-category").value;
+  const el = $("#category-sources");
+  if (!name) {
+    el.classList.add("hidden");
+    el.innerHTML = "";
+    return;
+  }
+  const cat = state.categories.find((c) => c.name === name);
+  const sources = (cat && cat.sources) || [];
+  if (!sources.length) {
+    el.classList.add("hidden");
+    el.innerHTML = "";
+    return;
+  }
+  el.classList.remove("hidden");
+  el.innerHTML = `<span class="cs-label">Best sources:</span> ` +
+    sources.map((s) => `<span class="pill">${esc(s)}</span>`).join(" ");
+}
+
 async function refresh() {
   const btn = $("#refresh-btn");
   btn.disabled = true;
@@ -245,13 +265,16 @@ async function init() {
     sel.appendChild(opt);
   });
   const cats = await api("/api/categories");
+  state.categories = cats;
   const catSel = $("#filter-category");
   cats.forEach((c) => {
     const opt = document.createElement("option");
-    opt.value = c;
-    opt.textContent = c;
+    opt.value = c.name;
+    opt.textContent = c.name;
     catSel.appendChild(opt);
   });
+  catSel.addEventListener("change", renderCategorySources);
+  renderCategorySources();
   await Promise.all([loadJobs(), loadPlatforms()]);
   setInterval(pollStatus, 10000);
 }

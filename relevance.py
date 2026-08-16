@@ -1,62 +1,15 @@
-"""Central relevance gate: keep only annotation/translation/data jobs.
+"""Central relevance gate: keep only jobs matching a known low-barrier category.
 
 Applied in BaseScraper.run() so every source is filtered uniformly. A job
-must match at least one include keyword (annotation / translation / data
-work), and its title must not match a clearly-unrelated profession.
+must match at least one include keyword (derived from the category filter
+keywords), and its title must not match a clearly-unrelated profession.
 """
 
-# Substrings (case-insensitive) that mark a job as relevant.
-INCLUDE_KEYWORDS = [
-    # annotation / AI training
-    "annotat",
-    "data label",
-    "labeling",
-    "labeler",
-    "tagger",
-    "tagging",
-    "rlhf",
-    "ai training",
-    "ai trainer",
-    "ai tutor",
-    "ai teacher",
-    "ai coach",
-    "model training",
-    "model evaluation",
-    "model validation",
-    "evaluator",
-    "prompt",
-    "training data",
-    "training dataset",
-    "ai content",
-    "content reviewer",
-    "content review",
-    "content moderation",
-    "ai/ml",
-    "ai ml",
-    "ml data",
-    "ai data",
-    # translation
-    "translat",
-    "translator",
-    "interpret",
-    "interpreter",
-    "amharic",
-    "አማርኛ",
-    "ethiopian language",
-    "language specialist",
-    "linguist",
-    "linguistic",
-    # data work (Ethiopia-relevant remote gigs)
-    "data entry",
-    "data entr",
-    "data collection",
-    "data contributor",
-    "data processing",
-    "data clerk",
-    "online data analyst",
-    "ai content analyst",
-    "ai data analyst",
-]
+from categories import all_filter_keywords
+
+# Substrings (case-insensitive) that mark a job as relevant. Single source
+# of truth: every category's filter keywords.
+INCLUDE_KEYWORDS = all_filter_keywords()
 
 # Title-only substrings that mark a job as irrelevant even if it matches
 # an include keyword (e.g. "Sales Data Analyst").
@@ -123,7 +76,6 @@ EXCLUDE_KEYWORDS = [
     "office assistant",
     # virtual-assistant / admin gigs (leak via description keywords)
     "virtual assistant",
-    "micro task",
     "administrative assistant",
     "admin assistant",
     "executive assistant",
