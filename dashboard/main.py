@@ -118,14 +118,17 @@ def update_job(job_id: int, update: JobUpdate) -> dict:
 
 
 @app.get("/api/platforms")
-def get_platforms() -> list[dict]:
-    return db.list_platforms()
+def get_platforms(category: str | None = None) -> list[dict]:
+    platforms = db.list_platforms()
+    if category:
+        platforms = [p for p in platforms if p.get("category") == category]
+    return platforms
 
 
 @app.patch("/api/platforms/{name}")
-def update_platform(name: str, update: PlatformUpdate) -> dict:
+def update_platform(name: str, update: PlatformUpdate, category: str | None = None) -> dict:
     fields = update.model_dump(exclude_none=True)
-    result = db.update_platform(name, fields)
+    result = db.update_platform(name, fields, category=category)
     if result is None:
         raise HTTPException(status_code=404, detail="Platform not found")
     return result

@@ -127,20 +127,24 @@ function renderPlatforms() {
   tbody.innerHTML = state.platforms.map((p) => `
     <tr>
       <td><a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.name)}</a></td>
+      <td><span class="pill">${esc(p.category)}</span></td>
       <td>${p.ethiopia_accessible ? '<span class="badge hi">Yes</span>' : '<span class="badge lo">No</span>'}</td>
       <td>
-        <select class="platform-status" data-name="${esc(p.name)}">
+        <select class="platform-status" data-name="${esc(p.name)}" data-category="${esc(p.category)}">
           ${["not_applied", "applied", "pending"].map((s) =>
             `<option value="${s}" ${p.status === s ? "selected" : ""}>${s}</option>`).join("")}
         </select>
       </td>
-      <td><input class="platform-notes" data-name="${esc(p.name)}" value="${esc(p.notes)}" placeholder="Notes..."></td>
+      <td><input class="platform-notes" data-name="${esc(p.name)}" data-category="${esc(p.category)}" value="${esc(p.notes)}" placeholder="Notes..."></td>
     </tr>
   `).join("");
+  $("#platform-count").textContent = `(${state.platforms.length})`;
 }
 
 async function loadPlatforms() {
-  state.platforms = await api("/api/platforms");
+  const category = $("#filter-category").value;
+  const query = category ? `?category=${encodeURIComponent(category)}` : "";
+  state.platforms = await api(`/api/platforms${query}`);
   renderPlatforms();
 }
 
@@ -230,12 +234,18 @@ $("#filter-remote").addEventListener("change", loadJobs);
 $("#filter-applied").addEventListener("change", loadJobs);
 $("#sort").addEventListener("change", loadJobs);
 
+function platformUrl(name, category) {
+  const params = new URLSearchParams();
+  if (category) params.set("category", category);
+  return `/api/platforms/${encodeURIComponent(name)}${params.toString() ? `?${params}` : ""}`;
+}
+
 document.addEventListener("input", async (e) => {
   if (e.target.classList.contains("notes-input")) {
     await api(`/api/jobs/${e.target.dataset.id}`, { method: "PATCH", body: JSON.stringify({ notes: e.target.value }) });
   }
   if (e.target.classList.contains("platform-notes")) {
-    await api(`/api/platforms/${encodeURIComponent(e.target.dataset.name)}`, { method: "PATCH", body: JSON.stringify({ notes: e.target.value }) });
+    await api(platformUrl(e.target.dataset.name, e.target.dataset.category), { method: "PATCH", body: JSON.stringify({ notes: e.target.value }) });
   }
 });
 
@@ -250,7 +260,7 @@ document.addEventListener("click", async (e) => {
 
 document.addEventListener("change", async (e) => {
   if (e.target.classList.contains("platform-status")) {
-    await api(`/api/platforms/${encodeURIComponent(e.target.dataset.name)}`, { method: "PATCH", body: JSON.stringify({ status: e.target.value }) });
+    await api(platformUrl(e.target.dataset.name, e.target.dataset.category), { method: "PATCH", body: JSON.stringify({ status: e.target.value }) });
   }
 });
 
@@ -274,6 +284,7 @@ async function init() {
     catSel.appendChild(opt);
   });
   catSel.addEventListener("change", renderCategorySources);
+  catSel.addEventListener("change", loadPlatforms);
   renderCategorySources();
   await Promise.all([loadJobs(), loadPlatforms()]);
   setInterval(pollStatus, 10000);

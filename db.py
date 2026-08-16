@@ -32,11 +32,13 @@ CREATE TABLE IF NOT EXISTS jobs (
 
 CREATE TABLE IF NOT EXISTS platforms (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
     url TEXT NOT NULL DEFAULT '',
     ethiopia_accessible INTEGER NOT NULL DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'not_applied',
-    notes TEXT NOT NULL DEFAULT ''
+    notes TEXT NOT NULL DEFAULT '',
+    category TEXT NOT NULL DEFAULT '',
+    UNIQUE(name, category)
 );
 
 CREATE TABLE IF NOT EXISTS source_runs (
@@ -73,6 +75,38 @@ def get_conn():
 def init_db() -> None:
     with get_conn() as conn:
         conn.executescript(_SCHEMA)
+        _migrate(conn)
+
+
+def _migrate(conn) -> None:
+    columns = {r["name"] for r in conn.execute("PRAGMA table_info(platforms)")}
+    if "category" not in columns:
+        conn.execute("ALTER TABLE platforms ADD COLUMN category TEXT NOT NULL DEFAULT ''")
+    # Old schemas had UNIQUE(name) which prevents a platform appearing under
+    # multiple categories. Rebuild with a composite (name, category) unique.
+    unique_name = conn.execute(
+        "SELECT COUNT(*) FROM pragma_index_list('platforms') WHERE \"unique\" = 1 AND origin = 'u'"
+    ).fetchone()[0]
+    if unique_name:
+        conn.execute("ALTER TABLE platforms RENAME TO platforms_old")
+        conn.execute("""
+            CREATE TABLE platforms (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                url TEXT NOT NULL DEFAULT '',
+                ethiopia_accessible INTEGER NOT NULL DEFAULT 0,
+                status TEXT NOT NULL DEFAULT 'not_applied',
+                notes TEXT NOT NULL DEFAULT '',
+                category TEXT NOT NULL DEFAULT '',
+                UNIQUE(name, category)
+            )
+        """)
+        conn.execute("""
+            INSERT INTO platforms (id, name, url, ethiopia_accessible, status, notes, category)
+            SELECT id, name, url, ethiopia_accessible, status, notes, ''
+            FROM platforms_old
+        """)
+        conn.execute("DROP TABLE platforms_old")
 
 
 def upsert_job(job: dict) -> None:
@@ -214,8 +248,8 @@ def _row_to_platform(row: dict) -> dict:
     return row
 
 
-def update_platform(name: str, fields: dict) -> dict | None:
-    allowed = {"ethiopia_accessible", "status", "notes", "url"}
+def update_platform(name: str, fields: dict, category: str | None = None) -> dict | None:
+    allowed = {"ethiopia_accessible", "status", "notes", "url", "category"}
     updates = {k: v for k, v in fields.items() if k in allowed}
     if not updates:
         return None
@@ -224,11 +258,29 @@ def update_platform(name: str, fields: dict) -> dict | None:
         int(bool(updates[k])) if k == "ethiopia_accessible" else str(updates[k])
         for k in updates
     ]
+    if category is not None:
+        row = _update_platform_by_name_category(conn_name := name, conn_category := category, assignments, values)
+    else:
+        row = _update_platform_by_name(name, assignments, values)
+    return _row_to_platform(dict(row)) if row else None
+
+
+def _update_platform_by_name(name: str, assignments: str, values: list) -> dict | None:
     values.append(name)
     with get_conn() as conn:
         conn.execute(f"UPDATE platforms SET {assignments} WHERE name = ?", values)
         row = conn.execute("SELECT * FROM platforms WHERE name = ?", (name,)).fetchone()
-    return _row_to_platform(dict(row)) if row else None
+    return dict(row) if row else None
+
+
+def _update_platform_by_name_category(name: str, category: str, assignments: str, values: list) -> dict | None:
+    values.extend([name, category])
+    with get_conn() as conn:
+        conn.execute(f"UPDATE platforms SET {assignments} WHERE name = ? AND category = ?", values)
+        row = conn.execute(
+            "SELECT * FROM platforms WHERE name = ? AND category = ?", (name, category)
+        ).fetchone()
+    return dict(row) if row else None
 
 
 def record_source_run(source: str, status: str, count_found: int = 0, error: str | None = None) -> None:
